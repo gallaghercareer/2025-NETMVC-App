@@ -16,7 +16,7 @@ namespace FinalProRere.ViewModels
 
         public List<Comment> Comments { get; set; }
 
-        public Comment Comment { get; set; }
+        public Comment Comment { get; set; } 
 
     }
 }
