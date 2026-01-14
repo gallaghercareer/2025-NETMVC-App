@@ -18,11 +18,11 @@
     <div id="heading">
         <a href="/home/employeeindex">Home</a> <a target="_blank" href="https://docs.google.com/document/d/1eh-c7nNmuU6CRv5ZS2dTp5LpFqJEkoIwypHCYVvm_4I/edit?usp=sharing">Contact Me</a> <a target="_blank" href="https://gallaghercareer.github.io/portfolio-2025">Portfolio</a>  @Html.Partial("_LoginPartial")
     </div>
-    <!--HERO ADD TICKET BUTTON-->
-    <div id="buttonadd">
-        <a id="buttonlink" style="border:thin;" class="btn" href='@Url.Action("AddTicketForm", "Home")'> Add Ticket</a>
-    </div>
     <div id="tablediv">
+        <!--HERO ADD TICKET BUTTON-->
+        <div id="buttonadd" style="margin-bottom: 20px;">
+            <a id="buttonlink" style="border:thin;" class="btn" href='@Url.Action("AddTicketForm", "Home")'> Add Ticket</a>
+        </div>
 
         <!--TABLE-->
         <table id="tickets" class="stripe table table-bordered table-hover" border="1">
