@@ -43,7 +43,7 @@ body {
 #heading {
     top: 0;
     grid-area: head;
-    background-color: #7D8B93;
+    background-color: #4A6572;
     font-size: 3.5rem;
     color: white;
     position: -webkit-sticky; 
@@ -69,7 +69,7 @@ body {
     margin-top:3rem;
     margin-bottom:0px;
     border-radius: 10px;
-    background-color: #FFAA5C;
+    background-color: #FF6B2B;
     color: white;
     margin-left: auto;
     margin-right: auto;
