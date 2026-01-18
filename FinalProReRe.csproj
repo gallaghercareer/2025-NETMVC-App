@@ -443,6 +443,9 @@
     <Content Include="Content\DataTables\css\semanticui.scss" />
     <Content Include="Content\DataTables\css\mixins.scss" />
     <Content Include="Content\DataTables\css\common.scss" />
+    <None Include="Properties\PublishProfiles\Bugtracker - FTP.pubxml" />
+    <None Include="Properties\PublishProfiles\Bugtracker - ReadOnly - FTP.pubxml" />
+    <None Include="Properties\PublishProfiles\Bugtracker - Web Deploy.pubxml" />
     <None Include="Properties\PublishProfiles\FinalProReRe20250306153225 - Web Deploy.pubxml" />
     <None Include="Scripts\jquery-3.4.1.intellisense.js" />
     <Content Include="Scripts\DataTables\autoFill.bootstrap.js" />
