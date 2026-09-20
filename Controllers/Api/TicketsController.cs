@@ -8,6 +8,7 @@ using System.Web.Http;
 
 namespace FinalProReRe.Controllers.Api
 {
+    [Authorize]
     public class TicketsController : ApiController
     {
 
@@ -17,6 +18,15 @@ namespace FinalProReRe.Controllers.Api
         public TicketsController()
         {
             _context = new ApplicationDbContext();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _context.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         //GET    /api/tickets
@@ -40,6 +50,7 @@ namespace FinalProReRe.Controllers.Api
         }
 
         [HttpPost]
+        [Authorize(Roles = "CanManageTickets")]
         public Ticket CreateTicket (Ticket ticket)
         {
             if (!ModelState.IsValid)
@@ -53,6 +64,7 @@ namespace FinalProReRe.Controllers.Api
         }
 
         [HttpPut]
+        [Authorize(Roles = "CanManageTickets")]
         public Ticket UpdateTicket(int id, Ticket ticket)
         {
             if (!ModelState.IsValid)
@@ -78,6 +90,7 @@ namespace FinalProReRe.Controllers.Api
         }
 
         [HttpDelete]
+        [Authorize(Roles = "CanManageTickets")]
         public void DeleteTicket(int id) {
             var existingTicket = _context.Tickets.SingleOrDefault(t => t.Id == id);
             if (existingTicket == null)
