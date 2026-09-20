@@ -26,6 +26,14 @@ namespace FinalProReRe
             {
                 AuthenticationType = DefaultAuthenticationTypes.ApplicationCookie,
                 LoginPath = new PathString("/Account/Login"),
+                CookieHttpOnly = true,
+                // Cloudflare terminates TLS and forwards plain HTTP to localhost, so the
+                // request cloudflared makes is not itself HTTPS. SameAsRequest keeps the
+                // cookie working both locally and through the tunnel; Cloudflare is
+                // configured to force HTTPS at the edge so the browser never sends it clear.
+                CookieSecure = CookieSecureOption.SameAsRequest,
+                ExpireTimeSpan = TimeSpan.FromHours(8),
+                SlidingExpiration = true,
                 Provider = new CookieAuthenticationProvider
                 {
                     // Enables the application to validate the security stamp when the user logs in.
