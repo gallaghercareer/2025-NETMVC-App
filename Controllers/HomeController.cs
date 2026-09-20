@@ -110,21 +110,25 @@ namespace FinalProReRe.Controllers
         public ActionResult ViewTicket(int ticketId, string commentTextBox, string Resolved, string Username)
         {
            
-            //if manager resolves a ticket 
-            if (Resolved == "true")
+            //only a manager may resolve a ticket - this action is reachable by any
+            //logged in user, so the role has to be checked here and not just in the view
+            if (User.IsInRole("CanManageTickets"))
             {
-                var resolved_ticket = _context.Tickets.Single(t => t.Id == ticketId);
+                if (Resolved == "true")
+                {
+                    var resolved_ticket = _context.Tickets.Single(t => t.Id == ticketId);
 
-                resolved_ticket.Resolved = true;
-                _context.SaveChanges();
-            }
+                    resolved_ticket.Resolved = true;
+                    _context.SaveChanges();
+                }
 
-            if (Resolved == "false")
-            {
-                var resolved_ticket = _context.Tickets.Single(t => t.Id == ticketId);
-                
-                resolved_ticket.Resolved = false;
-                _context.SaveChanges();
+                if (Resolved == "false")
+                {
+                    var resolved_ticket = _context.Tickets.Single(t => t.Id == ticketId);
+
+                    resolved_ticket.Resolved = false;
+                    _context.SaveChanges();
+                }
             };
           
             
