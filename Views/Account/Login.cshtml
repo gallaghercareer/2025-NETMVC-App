@@ -36,7 +36,11 @@
         #demo-credentials dt { font-weight:600; color:#555; }
         #demo-credentials dd { margin:0; }
         #demo-credentials code { font-size:0.9em; padding:0.1rem 0.3rem; background:rgba(0,0,0,0.06); border-radius:3px; }
-        #demo-credentials .note { margin:0.6rem 0 0; font-size:0.85rem; color:#666; }
+        #demo-credentials .note { margin:0.35rem 0 0; font-size:0.83rem; color:#666; }
+        #demo-credentials .acct { padding:0.6rem 0; border-top:1px solid rgba(0,0,0,0.08); }
+        #demo-credentials .acct:first-of-type { border-top:0; padding-top:0.2rem; }
+        #demo-credentials .role { display:block; font-weight:600; font-size:0.87rem; margin-bottom:0.3rem; color:#333; }
+        #demo-credentials .primary .role { color:#3a6fd8; }
     </style>
 </head>
 <body id="loginbody">
@@ -76,13 +80,29 @@
         }
 
         <div id="demo-credentials">
-            <strong>Demo account</strong>
-            <p>This is a portfolio demo. Sign in with the read-only account below.</p>
-            <dl>
-                <dt>Email</dt><dd><code>employee@hiring.com</code></dd>
-                <dt>Password</dt><dd><code>@ViewBag.DemoPassword</code></dd>
-            </dl>
-            <p class="note">Read-only access: view tickets and post comments.</p>
+            <strong>Demo accounts</strong>
+            <p>
+                This app uses role-based access control. Sign in with either account
+                to see how permissions change what the interface offers.
+            </p>
+
+            <div class="acct primary">
+                <span class="role">Manager &mdash; full access</span>
+                <dl>
+                    <dt>Email</dt><dd><code>admin@hiring.com</code></dd>
+                    <dt>Password</dt><dd><code>@ViewBag.DemoPassword</code></dd>
+                </dl>
+                <p class="note">Add and delete tickets, mark them resolved, comment.</p>
+            </div>
+
+            <div class="acct">
+                <span class="role">Employee &mdash; restricted</span>
+                <dl>
+                    <dt>Email</dt><dd><code>employee@hiring.com</code></dd>
+                    <dt>Password</dt><dd><code>@ViewBag.DemoEmployeePassword</code></dd>
+                </dl>
+                <p class="note">View tickets and comment only &mdash; the management controls are gone.</p>
+            </div>
         </div>
     </div>
 </body>

@@ -62,6 +62,7 @@ namespace FinalProReRe.Controllers
             ViewBag.error = "Login as Admin for full privileges, or Employee for restricted privileges";
             ViewBag.ReturnUrl = returnUrl;
             ViewBag.DemoPassword = ConfigurationManager.AppSettings["DemoPassword"];
+            ViewBag.DemoEmployeePassword = ConfigurationManager.AppSettings["DemoEmployeePassword"];
             return View();
         }
 

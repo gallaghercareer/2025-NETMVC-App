@@ -245,16 +245,18 @@ box with `Adminpass123!` — i.e. it shipped a complete, pre-typed admin login. 
 credentials were already dead (rotated on 2026-09-20), so nothing was ever exposed,
 but it had to go before launch.
 
-Now: nothing is pre-filled, no admin credentials appear anywhere on the page, and a
-styled panel shows the **employee (read-only)** demo account only. The password is
-read from the `DemoPassword` appSetting in `Web.config` via
-`ViewBag.DemoPassword` (`Controllers/AccountController.cs:63`) rather than being
-hardcoded in the view — so rotating it is a config change, not a code change.
+Now: nothing is pre-filled, and a styled panel lists **both** demo accounts, manager
+first. Passwords come from the `DemoPassword` / `DemoEmployeePassword` appSettings in
+`Web.config` via ViewBag (`Controllers/AccountController.cs:63-64`) rather than being
+hardcoded in the view, so rotating one is a config change, not a code change.
 
-**Keep `DemoPassword` in sync** with the real `employee@hiring.com` password in the
-database; if they drift, the login page advertises a password that does not work.
+Both are published on purpose (decided 2026-09-21): the manager account shows the
+full feature set and is the one a visitor should start with, and the employee account
+exists so a visitor can log in again and *see* the RBAC restrictions rather than just
+read about them. Accepted trade-off: any visitor can add and delete demo tickets.
 
-The admin password is deliberately *not* shown, so visitors cannot delete demo data.
+**Keep both appSettings in sync** with the real passwords in the database; if they
+drift, the login page advertises credentials that do not work.
 
 ### 6. Tunnel
 
