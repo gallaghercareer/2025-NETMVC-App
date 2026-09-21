@@ -2,6 +2,7 @@
 //using System.Globalization;
 using System.Linq;
 //using System.Security.Claims;
+using System.Configuration;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
@@ -60,6 +61,7 @@ namespace FinalProReRe.Controllers
         {
             ViewBag.error = "Login as Admin for full privileges, or Employee for restricted privileges";
             ViewBag.ReturnUrl = returnUrl;
+            ViewBag.DemoPassword = ConfigurationManager.AppSettings["DemoPassword"];
             return View();
         }
 

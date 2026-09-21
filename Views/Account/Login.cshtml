@@ -18,6 +18,26 @@
 
     <script src="https://use.fontawesome.com/releases/v5.13.0/js/all.js" crossorigin="anonymous"></script>
 
+    <style>
+        #demo-credentials {
+            margin-top: 1.25rem;
+            padding: 0.9rem 1.1rem;
+            max-width: 22rem;
+            border: 1px solid rgba(0,0,0,0.12);
+            border-left: 3px solid #5b8def;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.92);
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+        #demo-credentials strong { display:block; margin-bottom:0.35rem; }
+        #demo-credentials p { margin:0 0 0.6rem; color:#444; }
+        #demo-credentials dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:0.15rem 0.6rem; }
+        #demo-credentials dt { font-weight:600; color:#555; }
+        #demo-credentials dd { margin:0; }
+        #demo-credentials code { font-size:0.9em; padding:0.1rem 0.3rem; background:rgba(0,0,0,0.06); border-radius:3px; }
+        #demo-credentials .note { margin:0.6rem 0 0; font-size:0.85rem; color:#666; }
+    </style>
 </head>
 <body id="loginbody">
     <div>
@@ -40,23 +60,30 @@
     <div>
 
         @Html.LabelFor(m => m.Email, new { @class = "control-label" })
-        <i style="font-size: 1.1rem;" title="Username=Employee@hiring.com, Password=Employeepass123!" class='fa fa-info-circle'></i>
 
-        @Html.TextBoxFor(m => m.Email, "", new { @class = "form-control", Value = "Admin@hiring.com" })
+        @Html.TextBoxFor(m => m.Email, "", new { @class = "form-control" })
         @Html.ValidationMessageFor(m => m.Email, "", new { @class = "text-danger" })
-        <div style="font-size: 1rem;color:red">Username:Employee@hiring.com, Admin@hiring.com</div> 
 
     </div>
 
 
     <div>
         @Html.LabelFor(m => m.Password, new { @class = "control-label" })
-        @Html.PasswordFor(m => m.Password, new { @class = "form-control", value = "Adminpass123!" })
+        @Html.PasswordFor(m => m.Password, new { @class = "form-control" })
         @Html.ValidationMessageFor(m => m.Password, "", new { @class = "text-danger" })
-        <div style="font-size: 1rem;color:red">Password:Employeepass123!, Adminpass123!</div>
             <input id="buttonadd" type="submit" value="Log in" class="btn btn-default" style="width:100%; margin-top:5px;" />
         </div>
         }
+
+        <div id="demo-credentials">
+            <strong>Demo account</strong>
+            <p>This is a portfolio demo. Sign in with the read-only account below.</p>
+            <dl>
+                <dt>Email</dt><dd><code>employee@hiring.com</code></dd>
+                <dt>Password</dt><dd><code>@ViewBag.DemoPassword</code></dd>
+            </dl>
+            <p class="note">Read-only access: view tickets and post comments.</p>
+        </div>
     </div>
 </body>
 </html>

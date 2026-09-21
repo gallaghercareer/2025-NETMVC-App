@@ -85,31 +85,66 @@ If ASP.NET 4.x doesn't register with IIS afterwards:
 C:\Windows\Microsoft.NET\Framework64\v4.0.30319\aspnet_regiis.exe -i
 ```
 
-### 2. Point the connection string at SQL Express
-`Web.config` line ~12 currently reads `(LocalDb)\mssqllocaldb`. **LocalDB is
-developer-only and user-session-scoped — it will not run under an IIS app pool.**
-Change to:
+### 2. Point the connection string at SQL Server — DONE 2026-09-20
+`Web.config` line 12 now reads:
 
 ```xml
 <add name="DefaultConnection"
-     connectionString="Data Source=.\SQLEXPRESS;Initial Catalog=FinalProReRe;Integrated Security=True"
+     connectionString="Data Source=.\MSSQLSERVER02;Initial Catalog=FinalProReRe;Integrated Security=True"
      providerName="System.Data.SqlClient" />
 ```
 
-(`SQLEXPRESS` suggested over the default instance to keep this app isolated from
-whatever else is on the box. Any running instance works.)
+**Instance: `.\MSSQLSERVER02`** (SQL Server 2025, Standard Developer Edition).
+Chosen by John on 2026-09-20 to consolidate with his other projects. It was briefly
+set up on `.\SQLEXPRESS` first; that database has been dropped.
 
-### 3. Create the database
-From the Visual Studio **Package Manager Console** (EF6 migrations, not `dotnet ef`):
+The five instances on this box, checked 2026-09-20:
+
+| Instance | Version / edition | Service |
+|---|---|---|
+| `.\SQLEXPRESS` | 2019 **Express** | Running/Automatic |
+| `.\MSSQLSERVER01` | 2022 Developer | Running/Automatic |
+| `.\MSSQLSERVER02` | 2025 Developer | Running/Automatic |
+| `.` (default) | 2022 Developer | Running/Automatic |
+| `.\SQLEXPRESS01` | — | Stopped/Manual |
+
+All the running instances are Automatic, so any of them survives a reboot.
+
+**Open licensing question — decide before announcing the site.** Developer Edition
+is free but licensed for development and test use only, not production. Exposing
+this app publicly is production use, and `SQLEXPRESS` (2019 Express) is the only
+production-licensed instance here. Moving back is cheap: change the connection
+string, re-run the migrations, re-rotate the passwords (step 4). Note that a
+separate Cloudflare tunnel does **not** change this — a tunnel is still public
+exposure. Putting Cloudflare Access in front of the hostname would genuinely make
+it private, and would settle the question.
+
+**Do not point this app at `MSSQLSERVER01.BugTracker` despite the name** — that
+database has an `__EFMigrationsHistory` table (EF *Core*) and no `AspNetUsers`, so
+it belongs to a different project entirely. This app's EF6 history table is
+`__MigrationHistory`.
+
+Also noted: `SQLBrowser` is disabled and SQL Agent is stopped on every instance.
+Neither matters for a same-box named-instance connection, but it means **there are
+no scheduled backups anywhere**. Worth setting up once this is public.
+
+### 3. Create the database — DONE 2026-09-20
+Did **not** need the Package Manager Console. EF 6.4 ships a CLI at
+`packages/EntityFramework.6.4.4/tools/net45/any/ef6.exe`, which does the same job:
 
 ```powershell
-Update-Database
+packages\EntityFramework.6.4.4\tools\net45\any\ef6.exe database update `
+  --assembly bin\FinalProReRe.dll --config Web.config
 ```
 
-Runs the 15 migrations in `Migrations/`. `AutomaticMigrationsEnabled = false`, so
-schema changes always need an explicit `Add-Migration`.
+Build first — `ef6.exe` reads the compiled assembly, not the source (so a connection
+string change needs a rebuild before it takes effect). 13 migrations applied against
+`.\MSSQLSERVER02`, catalog `FinalProReRe`, Seed method ran, both accounts and both
+roles present, `Tickets` empty. No compatibility problems running this EF6 / .NET
+Framework 4.7.2 stack against the 2025 engine (default compatibility level 170).
+`AutomaticMigrationsEnabled = false`, so schema changes still need `Add-Migration`.
 
-### 4. Rotate the seeded accounts  ← CANNOT BE SKIPPED
+### 4. Rotate the seeded accounts — DONE 2026-09-20
 Migration `202010021455391_canmanageticketrole.cs` seeds two accounts with
 **hardcoded password hashes**, and the plaintext passwords were committed in
 `ReadMe.txt`. They are in git history and cannot be un-published. Step 3 recreates
@@ -118,11 +153,81 @@ those accounts on the new database.
 - `admin@hiring.com` — role `CanManageTickets`
 - `employee@hiring.com` — role `CanViewTicketsOnly`
 
-Both passwords must be changed **after** `Update-Database` and **before** the tunnel
-opens. Otherwise anyone who reads the repo has admin on the public site.
+Both were rotated on 2026-09-20, directly after `Update-Database` — and again after
+the database was recreated on `.\MSSQLSERVER02`, which re-seeded the public hashes. New hashes were
+generated with `Microsoft.AspNet.Identity.PasswordHasher` (so the format matches what
+the login path expects) and `SecurityStamp` was rotated at the same time, which
+invalidates any auth cookie issued against the old credentials. Verified: neither
+stored hash matches the value in the migration file any more.
 
-### 5. IIS site + app pool, verify locally
+The new passwords are not in the repo — they were handed over in the session that set
+them. **If they were not saved anywhere, rotate again** using the procedure in
+`ReadMe.txt`; there is no password-reset email flow configured to recover an account.
+
+Note this has to be redone for every fresh database: `Update-Database` re-seeds the
+public hashes from the migration.
+
+### 5. IIS site + app pool — DONE 2026-09-20
+
+IIS installed (`RestartNeeded: False`), `W3SVC` running and AUTO_START. Site and
+pool created by **`setup-iis.ps1`** (committed at the repo root, idempotent, must be
+run elevated). Verified live on `http://localhost:5080`:
+
+- `GET /` -> 302 to login (HomeController is `[Authorize]`)
+- `GET /api/tickets` anonymous -> 302 (the `[Authorize]` fix holds)
+- demo login as `employee@hiring.com` -> 302 + auth cookie issued
+- `GET /api/tickets` authenticated -> 200
+
+### 5b. Original step 5 notes (kept for reference)
+
+Note the distinction: **IIS Express** (what F5 in Visual Studio launches) runs as
+your user and dies when VS closes. **Full IIS** is the `W3SVC` Windows service —
+starts at boot before login, survives logoff, nothing to accidentally close. That
+durability is the whole reason for this step.
+
+**What an app pool is** (notes from 2026-09-20 — this is the part of IIS that is
+not obvious if you have only ever used F5 / IIS Express):
+
+IIS does not run your code itself. It hands requests to a separate worker process,
+`w3wp.exe`, and the app pool is the *configuration of that process* — runtime
+version, identity, lifetime. One pool = one worker = one isolation boundary, so a
+crash or leak in one site cannot affect another. IIS Express hides all of this: one
+app, running as you, no pool.
+
+Settings used by `setup-iis.ps1`, and why:
+
+- **`managedRuntimeVersion v4.0`** — .NET Framework 4.7.2 runs on CLR v4.0. The CLR
+  version stopped incrementing after 4.0 even though the framework went to 4.8, so
+  "v4.0" is correct here, not stale.
+- **`managedPipelineMode Integrated`** — required by MVC 5. The legacy "Classic"
+  mode breaks routing like `/Home/ViewTicket/5`.
+- **`ApplicationPoolIdentity`** — a virtual account (`IIS AppPool\Bugtracker`)
+  created per pool: no password, cannot log in interactively, minimal rights. This
+  is the **main security boundary**. It is the account that holds the SQL grant, so
+  a compromise of the web app is confined to datareader/datawriter on
+  `FinalProReRe` and cannot reach `HealthApp` or the other databases on that
+  instance. Do not change this to a real account or to LocalSystem.
+- **`idleTimeout = 0`** — default is 20 min, after which IIS kills the worker to
+  save memory. The next request restarts it, but pays 5-15s of cold start while .NET
+  re-JITs and EF rebuilds its model. This site's traffic pattern is *hours of
+  silence, then one recruiter*, so that recruiter would reliably eat the cold start.
+- **`recycling.periodicRestart.time = 0`** — default recycles every 29 hours
+  regardless of traffic (the odd number drifts the restart around the clock). That
+  default exists to paper over memory leaks. Tradeoff: if this app *does* leak, the
+  recycle was hiding it. Watch memory once it is live.
+- **`startMode AlwaysRunning`** + site `serverAutoStart` — start the worker when
+  IIS starts rather than on first request, so a reboot does not leave the first
+  visitor waiting. Caveat: this starts the *process*; ASP.NET still initializes the
+  app lazily on first request. Eliminating that entirely needs the Application
+  Initialization module plus a warmup URL — deliberately skipped for now, easy to
+  add if first loads feel slow.
+
 - App pool: **.NET CLR v4.0**, Integrated pipeline.
+- **Set `idleTimeout` to 0 and `startMode` to `AlwaysRunning`.** By default an app
+  pool idles out after 20 min and recycles every 29 hours. The site still works, but
+  the first request after a quiet spell pays a multi-second cold start while .NET and
+  EF warm up — i.e. exactly the request a recruiter makes. Also set the service
+  `WAS`/`W3SVC` startup to Automatic (it is by default).
 - Point the site at `C:\GitHub\2025-NETMVC-App` on a spare local port (not 5018 —
   that's taken by the other app).
 - Grant the app pool identity (`IIS AppPool\<name>`) read access to the folder, and
@@ -132,7 +237,36 @@ opens. Otherwise anyone who reads the repo has admin on the public site.
   table is empty, that call is failing), and confirm `/api/tickets` returns 401 in a
   logged-out private window.
 
+### 5c. Login page credentials — FIXED 2026-09-20
+
+`Views/Account/Login.cshtml` hardcoded the **old** admin and employee passwords in
+three places, and pre-filled both the email (`Admin@hiring.com`) and the password
+box with `Adminpass123!` — i.e. it shipped a complete, pre-typed admin login. Those
+credentials were already dead (rotated on 2026-09-20), so nothing was ever exposed,
+but it had to go before launch.
+
+Now: nothing is pre-filled, no admin credentials appear anywhere on the page, and a
+styled panel shows the **employee (read-only)** demo account only. The password is
+read from the `DemoPassword` appSetting in `Web.config` via
+`ViewBag.DemoPassword` (`Controllers/AccountController.cs:63`) rather than being
+hardcoded in the view — so rotating it is a config change, not a code change.
+
+**Keep `DemoPassword` in sync** with the real `employee@hiring.com` password in the
+database; if they drift, the login page advertises a password that does not work.
+
+The admin password is deliberately *not* shown, so visitors cannot delete demo data.
+
 ### 6. Tunnel
+
+**Decided 2026-09-20: `bugtracker.gallaghercareer.com` on port 5080.**
+
+No new domain and no new tunnel are needed. Unlike the other project (static
+front-end hosted separately + API on 5018), this app has **no separate front-end** —
+it is server-rendered Razor, and the views fetch `/api/tickets` as a *relative*
+same-origin path (`Views/Home/EmployeeIndex.cshtml:66`,
+`Views/Home/LimitedEmployeeIndex.cshtml:62`). Pages and API are one IIS application
+on one port, so one hostname covers the whole app.
+
 Add a second ingress to `C:\Users\John\.cloudflared\config.yml`, **above** the
 catch-all 404 (order matters — first match wins):
 
@@ -140,19 +274,72 @@ catch-all 404 (order matters — first match wins):
 ingress:
   - hostname: api.gallaghercareer.com
     service: http://localhost:5018
-  - hostname: <new-hostname>.gallaghercareer.com
-    service: http://localhost:<iis-port>
+  - hostname: bugtracker.gallaghercareer.com
+    service: http://localhost:5080
   - service: http_status:404
 ```
 
-Then add the DNS route and install the service so the tunnel survives reboot:
+Then add the DNS route and install the service so the tunnel survives reboot.
+
+**`cloudflared` is currently NOT a service** (checked 2026-09-20 — running as a
+manually-started process, PID 32804). It dies on logoff or reboot, which means
+`api.gallaghercareer.com` is already going dark whenever that happens. Installing
+the service fixes this for **both** apps at once: one tunnel process serves every
+hostname in the ingress list.
 
 ```powershell
-cloudflared tunnel route dns 75479627-7b42-4bc2-b0ac-ef1924b8f817 <new-hostname>.gallaghercareer.com
+cloudflared tunnel route dns 75479627-7b42-4bc2-b0ac-ef1924b8f817 bugtracker.gallaghercareer.com
 cloudflared service install   # elevated
 ```
 
 Force HTTPS at the Cloudflare edge (Always Use HTTPS) — see the `CookieSecure` note.
+
+### 6b. UNDECIDED — how exposed should this be? (raised 2026-09-20)
+
+Open question, deliberately parked. Nothing goes public until it is answered.
+
+**What always-on IIS does and does not change.** IIS listening on 5080 is not the
+same as the internet reaching it: no router port is forwarded and no firewall port is
+opened (all three firewall profiles confirmed enabled). `cloudflared` dials *out* to
+Cloudflare and traffic returns down that connection — the tunnel is the only door,
+and only for hostnames in the ingress list.
+
+**The real risks, in rough priority order:**
+
+1. **Bots find it within days.** Automated scanners will probe for `/wp-admin`,
+   `.env`, known CVEs, and will try credential stuffing on `/Account/Login`. This is
+   ambient internet background noise, not a maybe. Partly mitigated already: 5-attempt
+   lockout, PBKDF2 hashes, and the `[Authorize]` fix on `/api/tickets` (which was
+   fully anonymous before — that fix matters a lot here).
+2. **This box is not a DMZ.** It is John's dev machine. Other databases on it:
+   `FinanceApplication`, `StackOverflow2013`, `JulioDatabase`, `SameerDatabase`,
+   `HealthApp` — plus source code and credentials. `HealthApp` shares the
+   `MSSQLSERVER02` instance with this app's database.
+3. **The deferred CSRF hole becomes reachable.** `ViewTicket` mutates state over GET
+   with no antiforgery token (see "Known issues" below). Worst case is spam comments,
+   but it goes from theoretical to internet-reachable.
+4. Unpatched framework surface (.NET 4.7.2 / MVC 5 — still supported, keep Windows
+   Update current) and IIS default pages/version headers.
+
+**Therefore, non-negotiable in step 5** (these tighten what a breach could reach):
+- SQL login for the app pool: `db_datareader` + `db_datawriter` on `FinalProReRe`
+  **only** — *not* `db_owner`, and no access to `HealthApp` or the other databases.
+  The app never does DDL at runtime; migrations are run by hand from an admin context,
+  so `db_owner` buys nothing and costs a lot in a breach.
+- App pool runs as `ApplicationPoolIdentity` with **read-only** NTFS on the app
+  folder. Never as John's account, never as an administrator.
+
+**The options, when you come back to this:**
+
+- **Cloudflare Access** (free) — auth at the edge, so scanners never reach the
+  machine. Also neutralizes the CSRF issue and resolves the Developer Edition
+  licensing question in step 2 (arguably no longer public production use). Cost:
+  recruiters hit an email-code gate before they see the app.
+- **Open + Cloudflare WAF and rate limiting** (both free tier; rate-limit
+  `/Account/Login` specifically) — zero friction, but scanners reach the app and the
+  CSRF hole is live.
+- **Open, but fix the CSRF issue first** — rework `ViewTicket` into a POST with an
+  antiforgery token; touches `ViewTicket.cshtml` and `EmployeeViewTicket.cshtml`.
 
 ### 7. Final check before announcing it
 - [ ] `/api/tickets` returns 401 when logged out
