@@ -25,5 +25,15 @@ hash and the SecurityStamp (rotating the stamp invalidates existing auth cookies
 Do not set PasswordHash to NULL - the account cannot log in and there is no
 password-reset email flow configured to recover it.
 
-The current live passwords are not stored in this repo. See DEPLOY-TODO.md for the
-rest of the deployment checklist.
+The current live passwords are not stored in this repo.
+
+Other docs
+==========
+
+  RUNBOOK.md      START HERE if you are coming back to this cold. How the live
+                  site runs (Cloudflare -> cloudflared -> IIS -> w3wp -> SQL),
+                  how to deploy a change, what to check when it breaks, and the
+                  things that look broken but are not.
+
+  DEPLOY-TODO.md  The build log: how it got set up, what was decided and why,
+                  and the issues that were looked at and deliberately left.
