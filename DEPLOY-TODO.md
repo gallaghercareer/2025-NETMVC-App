@@ -343,6 +343,39 @@ and only for hostnames in the ingress list.
 - **Open, but fix the CSRF issue first** — rework `ViewTicket` into a POST with an
   antiforgery token; touches `ViewTicket.cshtml` and `EmployeeViewTicket.cshtml`.
 
+### 6c. LIVE 2026-09-21 — and two gotchas hit on the way
+
+`https://bugtracker.gallaghercareer.com` is reachable. Verified over the public URL:
+login page 200, manager login succeeds, authenticated `/api/tickets` returns JSON,
+anonymous `/api/tickets` redirects to login.
+
+**Gotcha 1 — `cloudflared service install` registers the service with NO arguments.**
+It set `binPath` to the bare exe, so the service started but never ran the tunnel,
+and every hostname (including the pre-existing `api.`) returned **530 origin
+unreachable**. It also runs as LocalSystem, which looks for config under
+`System32\config\systemprofile\.cloudflared\` rather than John's profile. Fix is
+`fix-cloudflared.bat` (repo root, run elevated), which sets the binPath to the exe
+plus `--config <path to config.yml> tunnel run <tunnel id>`.
+
+Notes for next time: a `.bat` is used deliberately because `sc.exe` wants
+`binPath= <value>` as a single token and PowerShell splits it (error **1639**).
+`Set-Service -BinaryPathName` would be cleaner but needs PowerShell 7+; this box
+runs Windows PowerShell 5.1. `sc stop` often fails with **1061** and cloudflared
+hangs in StopPending while retrying its edge connection — `taskkill /F` is the
+reliable stop, and the batch file does that. Failure-recovery actions are set so the
+service restarts itself if the tunnel dies.
+
+**Gotcha 2 — Cloudflare Email Obfuscation mangles the demo credentials.** Scrape
+Shield rewrites anything that looks like an email into a
+`/cdn-cgi/l/email-protection` link, so the login page shows `[email protected]`
+instead of the usernames a visitor needs to type. The passwords render fine, which
+makes it look like a ViewBag bug. **Turn it off:** dash.cloudflare.com →
+gallaghercareer.com → Scrape Shield → Email Address Obfuscation → Off.
+
+**Unrelated:** `https://api.gallaghercareer.com/` returns 404, but something *is*
+listening on 5018, so the tunnel reaches it — that is the other app's own response
+to `/`, not a tunnel fault.
+
 ### 7. Final check before announcing it
 - [ ] `/api/tickets` returns 401 when logged out
 - [ ] Seeded passwords rotated (step 4)
