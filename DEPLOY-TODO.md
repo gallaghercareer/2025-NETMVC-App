@@ -354,11 +354,18 @@ and only for hostnames in the ingress list.
 
 ## Known issues, deliberately deferred
 
-- **`ViewTicket` mutates state over GET with no antiforgery token.** Resolving is now
-  role-checked, but any logged-in user can still be CSRF'd into posting a comment.
-  Fixing it properly means reworking the action into a POST and updating both
-  `ViewTicket.cshtml` and `EmployeeViewTicket.cshtml`. Real, but low severity —
-  shouldn't block launch.
+- **`ViewTicket` mutates state over GET with no antiforgery token.** ~~Deferred~~
+  **WON'T FIX — decided 2026-09-21.** John reviewed the issue and declined; the app
+  holds no real data and the worst case is spam comments on a demo. Do not raise it
+  again unless he asks.
+
+  For reference if that ever changes: the action writes on GET (resolve + comment),
+  so `<img src="/Home/ViewTicket?ticketId=5&commentTextBox=x">` on any page posts a
+  comment as whoever visits it. The fix is to split it into `ViewTicket` (GET,
+  display only), `AddComment` and `ToggleResolved` (both POST +
+  `[ValidateAntiForgeryToken]`), then update `ViewTicket.cshtml`,
+  `EmployeeViewTicket.cshtml` and `NewCommentView.cshtml`. The resolve forms already
+  use `method="post"`; the action just lacks `[HttpPost]`, so it accepts both verbs.
 - **Self-registration is commented out** in `AccountController` (the disabled block
   granted `CanManageTickets` to every new signup — do not re-enable as-is). Public
   visitors therefore cannot create accounts; they need the demo credentials. Decide
